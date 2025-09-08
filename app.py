@@ -20,22 +20,35 @@ if uploaded_file:
 
     # Feature Engineering: Shifted Close as target
     close_col = "Close"  # change if your CSV has a different close column name
-    df["Target"] = df[close_col].shift(-1)  # next day's close
-    df = df.dropna()
+    if close_col not in df.columns:
+        st.error(f"Column '{close_col}' not found in the CSV.")
+    else:
+        df["Target"] = pd.to_numeric(df[close_col].shift(-1), errors="coerce")
+        df = df.dropna()
 
-    # Features (OHLCV except Date & Target)
-    features = ["Open", "High", "Low", "Volume"]
-    features = [f for f in features if f in df.columns]
+        # Automatically detect numeric columns for features (exclude Target)
+        numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+        if "Target" in numeric_cols:
+            numeric_cols.remove("Target")
+        X = df[numeric_cols].fillna(0)
+        y = df["Target"].fillna(0)
 
-    X = df[features].apply(pd.to_numeric, errors="coerce").fillna(0)
-    y = pd.to_numeric(df["Target"], errors="coerce").fillna(0)
+        # Train/test split
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train/test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # Train Linear Regression
+        model = LinearRegression()
+        model.fit(X_train, y_train)
 
-    # Train Linear Regression
-    model = LinearRegression()
-    model.fit(X_train, y_train)
+        # Predictions
+        y_pred = model.predict(X_test)
+        mse = mean_squared_error(y_test, y_pred)
 
-    # Predictions
-    y_pred = model.pr_
+        st.subheader("Model Performance")
+        st.write(f"Mean Squared Error: {mse:.2f}")
+
+        # Predict next day
+        st.subheader("Predict Next Day Close")
+        last_row = X.tail(1)
+        next_day_pred = model.predict(last_row)[0]
+        st.write(f"Predicted Next Day Close: {next_day_pred:.2f}")
