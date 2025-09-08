@@ -19,7 +19,7 @@ if uploaded_file:
         df[col] = pd.to_numeric(df[col], errors="ignore")
 
     # Feature Engineering: Shifted Close as target
-    close_col = "Close"  # change if your CSV has a different close column name
+    close_col = "Close"  # Change if CSV has different column
     if close_col not in df.columns:
         st.error(f"Column '{close_col}' not found in the CSV.")
     else:
@@ -48,7 +48,18 @@ if uploaded_file:
         st.write(f"Mean Squared Error: {mse:.2f}")
 
         # Predict next day
-        st.subheader("Predict Next Day Close")
-        last_row = X.tail(1)
-        next_day_pred = model.predict(last_row)[0]
-        st.write(f"Predicted Next Day Close: {next_day_pred:.2f}")
+        st.subheader("Predict Future Close Prices")
+        last_row = X.tail(1).copy()  # Start from the latest row
+        days_to_predict = st.number_input("Enter number of future days to predict:", min_value=1, max_value=30, value=5)
+
+        future_prices = []
+        for i in range(days_to_predict):
+            next_price = model.predict(last_row)[0]
+            future_prices.append(next_price)
+            # Update last_row to simulate next day input
+            last_row[close_col] = next_price
+            # Keep other features the same (can be improved with more complex methods)
+        
+        st.write(f"Predicted Close Prices for next {days_to_predict} days:")
+        for i, price in enumerate(future_prices, 1):
+            st.write(f"Day {i}: {price:.2f}")
